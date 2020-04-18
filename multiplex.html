@@ -1,0 +1,842 @@
+<html>
+    <head>
+        <style>
+            html, body {
+    position: fixed;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+    padding: 0;
+
+	background: radial-gradient(#222, black);
+
+	font-size: 12px;
+	text-transform: uppercase;
+	font-family: Arial;
+	font-weight: bold;
+	letter-spacing: 0.25px;
+
+    /* make text unselectable */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none; 
+}
+
+img {
+    width: 24px;
+    height: 24px;
+}
+
+#overlay {
+
+    position: absolute;
+    top: 0;
+    left: 0;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+    padding: 0;
+    z-index: 1;
+    background: radial-gradient(#bbb, white);
+    opacity: 0.1;
+    pointer-events: none;
+
+}
+
+
+
+.key {
+    margin: 0 8px;
+    color: #999;
+}
+
+
+
+/* descriptioin about the mulitplex network  */
+.description {
+	color: #666;
+	position: absolute;
+    top: 20px;
+    left: 40px;
+	z-index: 2;
+}
+
+.description > h1 {
+	font-size: 25px;
+	letter-spacing: 1px;
+	color: #bbb;
+	margin-bottom: 25px;
+}
+
+.description > p {
+	margin: 8px 0 8px -8px;
+}
+
+
+
+/* info about a hovered link or node */
+.info {
+	color: #666;
+	position: absolute;
+    top: 40px;
+    right: 40px;
+	z-index: 2;
+    text-align: right;
+}
+
+.info > p {
+	margin: 0 0 8px 0;
+}
+
+
+
+/* controls to modify appearance of the multiplex network */
+.controls {
+	position: absolute;
+    bottom: 20px;
+	z-index: 2;
+}
+
+.controls > p > a {
+    color: #666;
+    font-size: 10px;
+    text-decoration: none;
+    margin-right: 25px;
+    opacity: 0.7;
+}
+
+.controls > p > a:hover {
+    opacity: 1;
+}
+
+
+
+/* custom slider */
+.slider {
+    -webkit-appearance: none;
+    width: 120px;
+    height: 10px;
+    background: #111;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+    z-index: 2;
+}
+
+.slider:hover {
+    opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    background: #999;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    background: #999;
+    cursor: pointer;
+}
+        </style>
+    </head>
+    <body>
+        <div class="description"> 
+    <h1>Multiplex network</h1>
+    <p><span class="key">directed</span><span id='directed_label'></span><span class="key">weighted</span><span id='weighted_label'></span></p>
+    <p><span class="key">nodes</span><span id='vcount_label'></span><span class="key">edges</span><span id='ecount_label'></span><span class="key">layers</span><span id='lcount_label'></span></p>
+</div>
+<div class="info"></div>
+<div class="controls" style="left: 40px">
+    <p>
+        <a id="node_visibility" href='javascript:toggle_visibility("node")'>hide node labels</a>
+        <a id="edge_visibility" href='javascript:toggle_visibility("edge")'>show edge labels</a>
+    </p>
+</div>
+<div id="perspective_slider" class="controls" style="width: 400px; height: 24px; left: 0; right: 0; margin: 0 auto; bottom: -24px">
+    <input type="range" min="0.25" max="1" value="0.75" step="0.025" onchange='javascript:change_parameter("s", value)' class="slider">
+    <input type="range" min="0" max="0.7" value="0.15" step="0.025" onchange='javascript:change_parameter("o", value)' class="slider">
+    <input type="range" min="0.1" max="0.8" value="0.5" step="0.025" onchange='javascript:change_parameter("t", value)' class="slider">
+</div>
+<div class="controls" style="right: 20px">
+    <p>
+        <a id="toggle_simulation" href='javascript:toggle_simulation()'><img src="./img/restart.png"/></a>
+        <a id="view_mode" href='javascript:switch_view()'><img src="./img/stackview.png"/></a>
+        <a id="pdf" href='javascript:pdf()'><img src="./img/svg.png"/></a>
+    </p>
+</div>
+<svg id='network'>
+    <defs>
+        <filter id='blur'>
+            <feGaussianBlur in="SourceGraphic" stdDeviation="12" />
+        </filter>
+    </defs>
+</svg>
+<div id='overlay'></div>
+    </body>
+    <script charset="utf-8" src="https://d3js.org/d3.v4.min.js"></script>
+    <script charset='utf-8'>
+        // include('./js/d3.v4.min.js')
+
+        var nodes = [{"id": "0", "properties": {}}, {"id": "1", "properties": {}}, {"id": "2", "properties": {}}, {"id": "3", "properties": {}}, {"id": "4", "properties": {}}, {"id": "5", "properties": {"vs": {"radius": "15px", "color": "yellow", "label_size": "15px", "stroke_width": "3px", "stroke_color": "orange", "label_color": "orange", "text": "?"}, "name": "Peter"}}, {"id": "6", "properties": {}}, {"id": "7", "properties": {}}, {"id": "8", "properties": {}}, {"id": "9", "properties": {}}, {"id": "10", "properties": {}}, {"id": "11", "properties": {}}, {"id": "12", "properties": {}}, {"id": "13", "properties": {}}, {"id": "14", "properties": {}}, {"id": "15", "properties": {}}, {"id": "16", "properties": {}}, {"id": "17", "properties": {}}, {"id": "18", "properties": {}}, {"id": "19", "properties": {}}]
+var links = [{"source": "1", "target": "0", "layer": "Facebook", "properties": {"weight": 1.0}}, {"source": "5", "target": "6", "layer": "Facebook", "properties": {"weight": 1.0}}, {"source": "6", "target": "7", "layer": "Facebook", "properties": {"weight": 1.0}}, {"source": "8", "target": "2", "layer": "Facebook", "properties": {"weight": 1.0}}, {"source": "12", "target": "8", "layer": "Facebook", "properties": {"weight": 1.0}}, {"source": "16", "target": "10", "layer": "Facebook", "properties": {"weight": 1.0}}, {"source": "0", "target": "5", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "1", "target": "5", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "2", "target": "5", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "3", "target": "5", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "4", "target": "5", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "6", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "7", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "8", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "9", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "10", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "11", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "12", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "13", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "14", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "15", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "16", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "17", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "18", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "5", "target": "19", "layer": "Twitter", "properties": {"weight": 1.0}}, {"source": "0", "target": "1", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "1", "target": "2", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "2", "target": "3", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "3", "target": "4", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "4", "target": "5", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "5", "target": "6", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "6", "target": "7", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "7", "target": "8", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "8", "target": "9", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "9", "target": "10", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "10", "target": "11", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "11", "target": "12", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "12", "target": "13", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "13", "target": "14", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "14", "target": "15", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "15", "target": "16", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "16", "target": "17", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "17", "target": "18", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "18", "target": "19", "layer": "Whatsapp", "properties": {"weight": 1.0}}, {"source": "0", "target": "19", "layer": "Whatsapp", "properties": {"weight": 1.0}}]
+var layers = ["Facebook", "Twitter", "Whatsapp"]
+var directed = true
+var weighted = false
+var vcount = 20
+var ecount = 45
+var lcount = 3
+
+// var nodes = [{"id": "0", "properties": {}}, {"id": "1", "properties": {}}, {"id": "2", "properties": {}}, {"id": "3", "properties": {}}, {"id": "4", "properties": {}}, {"id": "5", "properties": {"vs": {"radius": "15px", "color": "yellow", "label_size": "15px", "stroke_width": "3px", "stroke_color": "orange", "label_color": "orange", "text": "?"}, "name": "Peter"}}, {"id": "6", "properties": {}}, {"id": "7", "properties": {}}, {"id": "8", "properties": {}}, {"id": "9", "properties": {}}, {"id": "10", "properties": {}}, {"id": "11", "properties": {}}, {"id": "12", "properties": {}}, {"id": "13", "properties": {}}, {"id": "14", "properties": {}}, {"id": "15", "properties": {}}, {"id": "16", "properties": {}}, {"id": "17", "properties": {}}, {"id": "18", "properties": {}}, {"id": "19", "properties": {}}]
+// var links = [{"source": "0", "target": "1", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "1", "target": "2", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "9", "target": "6", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "10", "target": "0", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "10", "target": "7", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "14", "target": "5", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "15", "target": "2", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "15", "target": "11", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "15", "target": "18", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "17", "target": "3", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "18", "target": "3", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "19", "target": "1", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "19", "target": "10", "layer": "Erdos-Renyi", "properties": {"weight": 1.0}}, {"source": "2", "target": "3", "layer": "Erdos-Renyi", "properties": {"weight": 3}}, {"source": "0", "target": "5", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "1", "target": "5", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "2", "target": "5", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "3", "target": "5", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "4", "target": "5", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "6", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "7", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "8", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "9", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "10", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "11", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "12", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "13", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "14", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "15", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "16", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "17", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "18", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "5", "target": "19", "layer": "Star", "properties": {"weight": 1.0}}, {"source": "0", "target": "1", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "1", "target": "2", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "2", "target": "3", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "3", "target": "4", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "4", "target": "5", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "5", "target": "6", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "6", "target": "7", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "7", "target": "8", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "8", "target": "9", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "9", "target": "10", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "10", "target": "11", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "11", "target": "12", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "12", "target": "13", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "13", "target": "14", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "14", "target": "15", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "15", "target": "16", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "16", "target": "17", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "17", "target": "18", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "18", "target": "19", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}, {"source": "0", "target": "19", "layer": "Watts-Strogatz", "properties": {"weight": 1.0}}]
+// var layers = ["Erdos-Renyi", "Star", "Watts-Strogatz"]
+// var directed = true
+// var weighted = true
+// var vcount = 20
+// var ecount = 52
+// var lcount = 3
+
+var svg = d3.select('#network')
+
+var stack_view = false
+var s = 0.75
+var o = 0.15
+var t = 0.5
+        default_style = {
+    'link': {
+        'width': '2.5px',
+        'length': '80',
+        'arrow_width': '8px',
+        'arrow_height': '10px',
+        'label_color': '#666',
+        'label_size': '10px'
+    },
+
+    'node': {
+        'color': 'black',
+        'radius': '10px',
+        'stroke_color': 'grey',
+        'stroke_width': '2px',
+        'label_color': '#999',
+        'label_size': '10px'
+    }
+}
+
+// set up properties for nodes
+nodes.forEach(function(node) {
+    for (var style in default_style['node']) {
+        if (!('vs' in node.properties)) {
+            node.properties['vs'] = {}
+        }
+        if (!(style in node.properties['vs'])) {
+            node.properties['vs'][style] = default_style['node'][style]
+        }
+    }
+    if (!('text' in node.properties['vs'])) {
+        node.properties.vs.text = node.id
+    }
+})
+
+// set up properties for links
+links.forEach(function(link) {
+
+    // set link id
+    link.id = link.source + '-' + link.target + '-' + link.layer
+
+    // set link styles
+    for (var style in default_style['link']) {
+        if (!('vs' in link.properties)) {
+            link.properties['vs'] = {}
+        }
+        if (!(style in link.properties['vs'])) {
+            link.properties['vs'][style] = default_style['link'][style]
+        }
+    }
+    if (!('text' in link.properties['vs'])) {
+        link.properties.vs.text = link.properties.weight
+    }
+    if (!('color' in link.properties['vs'])) {
+        link.properties.vs.color = color_of_layer(link.layer)
+    }
+
+    //
+    // set curve radius
+    //
+
+    // all links from source->target
+    var all_links = links.filter(function(l) {
+        return l.source == link.source && l.target == link.target;
+    })
+    
+    if (directed) {
+
+        // all links from target->source
+        var all_reversed_links = links.filter(function(l) {
+            return l.source == link.target && l.target == link.source;
+        })
+
+        // if there is only one single link from source->target and no link in the opposite direction, draw a straight line
+        if (all_links.length == 1 && all_reversed_links == 0) {
+            link.curve_radius = 0
+
+        // else apply bending
+        } else {
+            link.curve_radius = all_links.findIndex(function(l) {
+                return l.layer == link.layer;
+            }) + 1
+        }
+
+    // if we have an undirected network
+    } else {
+
+        // if there a is an odd number of links we draw one straight line in the middle
+        if (all_links.length % 2 === 1) {
+
+            link.curve_radius = all_links.findIndex(function(l) {
+                return l.layer == link.layer;
+            }) - (all_links.length - 1) / 2
+
+        // if there a is an even number of links we do not draw a straight line in the middle
+        } else {
+
+            link.curve_radius = all_links.findIndex(function(l) {
+                return l.layer == link.layer;
+            }) - all_links.length / 2
+
+            if (link.curve_radius >= 0) {
+                link.curve_radius += 1
+            }
+
+        }
+    }
+
+})
+
+
+// defines a color for each layer
+function color_of_layer(layer) {
+    return 'hsl(' + 360 * layers.indexOf(layer) / layers.length + ', 100%, 50%)'
+}
+        var window_width = svg.style('width', '100%').node().getBoundingClientRect().width
+var window_height = svg.style('height', '100%').node().getBoundingClientRect().height
+
+d3.select('#directed_label').text(directed == true ? 'Yes' : 'No')
+d3.select('#weighted_label').text(weighted == true ? 'Yes' : 'No')
+d3.select('#vcount_label').text(vcount)
+d3.select('#ecount_label').text(ecount)
+d3.select('#lcount_label').text(lcount)
+
+links.forEach(function(link) {
+
+    var w = parseInt(link.properties.vs['arrow_width'])
+    var h = parseInt(link.properties.vs['arrow_height'])
+
+    // for each layer we have to define an arrowhead with its respective color
+    d3.select('defs').append('marker')
+        .attr('id', 'arrowhead-' + link.id)
+        .attr('refX', h)
+        .attr('refY', w/2)
+        .attr('orient', 'auto')
+        .attr('markerWidth', h)
+        .attr('markerHeight', w)
+        .attr('markerUnits', 'userSpaceOnUse')
+        .append('path')
+        .attr('d', `M 0,0 L ${h},${w/2.} L 0,${w}`)
+        .attr('fill', color_of_layer(link.layer))
+        .style('stroke','none')
+
+})
+
+
+// add all links, nodes and labels to the DOM
+layers.forEach(function(layer, i) {
+
+    var layer_number = layers.length-1-i
+
+
+    svg.append('rect')
+        .attr('id', 'layer_background')
+        .attr('class', `transform layer${layer_number}`)
+        .attr('opacity','0.0')
+        .attr('fill', '#222')
+        .attr('rx', '8')
+        .attr('ry', '8')
+        .style('border', 'solid 1px #333')
+        .attr('pointer-events', 'none')
+
+    if (i != 0) {
+
+        // add rect which represents background of a layer
+        svg.append('clipPath')
+            .attr('id', `clipPath${layer_number}`)
+            .append('rect')
+            .attr('class', `view_transform layer${layer_number} layer_clippath`)
+
+        svg.append('g')
+            .attr('id', 'blur_background')
+            .style('clip-path', `url(#clipPath${layer_number})`)
+            .attr('opacity','0.0')
+            .append('use')
+            .attr('xlink:xlink:href', `#layer${layer_number + 1}`)
+            .style('filter', 'url(#blur)')
+
+    }
+
+
+    var layer_element = svg.append('g')
+        .attr('id', `layer${layer_number}`)
+        .attr('class', `transform layer${layer_number} layer`)
+
+    // obtain all links of this layer
+    var links_layer = links.filter(function(l) { return l.layer === layer; })
+
+    // add all links of the layer
+    layer_element.append('g')
+        .selectAll('path')
+        .data(links_layer)
+        .enter()
+        .append('path')
+        .attr('id', 'link')
+        .attr('marker-end', function(l) { 
+            if (directed) {
+                return 'url(#arrowhead-' + l.id + ')';
+            } else {
+                return 'none';
+            }})
+        .attr('fill', 'transparent')
+        .style('stroke', function(l) { return l.properties.vs.color; })
+        .style('stroke-width', function(l) { return l.properties.vs.width; })
+
+    // add all weight-labels to the DOM
+    layer_element.append('g').selectAll('text')
+        .data(links_layer)
+        .enter().append('text')
+        .attr('id', 'edge_label')
+        .attr('text-anchor', 'middle')
+        .attr("dominant-baseline", "central")
+        .attr('fill', function(l) { return l.properties.vs.label_color; })
+        .attr('font-size', function(l) { return parseInt(l.properties.vs.label_size); })
+        .attr('font-family', 'Arial')
+        .attr('font-weight', 'bold')
+        .attr('link-id', function(l) { return l.id; })
+        .attr('pointer-events', 'none')
+        .style('opacity', '0')
+        .style('mix-blend-mode', 'difference')
+        .text(function(l) { return l.properties.vs.text; })
+
+    // add all nodes to the DOM
+    layer_element.append('g')
+        .attr('id', 'nodes')
+        .selectAll('circle')
+        .data(nodes)
+        .enter().append('circle')
+        .attr('id', 'node')
+        .attr('r', function(n) { return parseInt(n.properties.vs.radius); })
+        .style('fill', function(n) { return n.properties.vs.color; })
+        .style('stroke', function(n) { return n.properties.vs.stroke_color; })
+        .style('stroke-width', function(n) { return n.properties.vs.stroke_width; })
+
+    // add all node-labels to the DOM
+    layer_element.append('g').selectAll('text')
+        .data(nodes)
+        .enter().append('text')
+        .attr('id', 'node_label')
+        .attr('text-anchor', 'middle')
+        .attr("dominant-baseline", "central")
+        .attr('fill', function(n) { return n.properties.vs.label_color; })
+        .attr('font-size', function(n) { return parseInt(n.properties.vs.label_size); })
+        .attr('font-family', 'Arial')
+        .attr('font-weight', 'bold')
+        .attr('pointer-events', 'none')
+        .text(function(n) { return n.properties.vs.text; })
+
+    // add layer description
+    layer_element.append('text')
+        .attr('id', 'description')
+        .attr('text-anchor', 'middle')
+        .attr("dominant-baseline", "hanging")
+        .attr('font-family', 'Arial')
+        .attr('font-weight', 'normal')
+        .attr('font-size', '18px')
+        .attr('transform', 'translate(0,60)')
+        .style('fill', '#383838')
+        .attr('opacity','0')
+        .text(layer)
+
+    // we need interlayer edges only BETWEEN two layers, therefore do not add interlayer edges before first layer
+    if (i != layers.length - 1) {
+
+        // add interlayer edges
+        svg.append('g')
+            .selectAll('line')
+            .data(nodes)
+            .enter()
+            .append('line')
+            .attr('id', 'interlayer_edge')
+            .attr('layer', layer_number-1)
+            .attr('stroke-dasharray', '3,6')
+            .attr('transform', 'translate(0,' + window_height + ')')
+            .attr('stroke', '#666')
+            .attr('stroke-width', '5')
+            .attr('opacity', '0.25')
+            .attr('pointer-events', 'none')
+            .attr('node_id', function(n) { return n.id; })
+
+    }
+})
+        
+// start the simulation which represents the interactive network
+var simulation = d3
+    .forceSimulation()
+    .nodes(nodes)
+    .force('link', d3.forceLink(links)
+        .id(function(n) { return n.id; })
+        .distance(function(l) { return l.properties.vs.length; }))
+    .force('charge', d3.forceManyBody()
+        .strength(function() { return -300; }))
+    .force('center', d3.forceCenter(window_width / 2, window_height / 2))
+    .alphaTarget(0.2)
+    .alphaDecay(0.05)
+
+d3.selectAll('#node').call(d3.drag()
+    .on('start', drag_started)
+    .on('drag', dragged)
+    .on('end', drag_ended));
+
+// define coordinates and style of nodes and links
+simulation.on('tick', function() {
+
+    // for the links we create a quadratic curve using svg bezier paths
+    d3.selectAll('#link').attr('d', function(l) {
+
+        // coordinates of start and end point
+        var x1 = l.source.x,
+            y1 = l.source.y,
+            x2 = l.target.x,
+            y2 = l.target.y,
+            dx = x2 - x1,
+            dy = y2 - y1
+
+        // the control point of the bezier path lies above the middle point between start and end point of the path
+        // first we define the distance between control point and middle point
+
+        // you can change the scaling factors as you like
+        var scaling_factor_1 = 7.5,
+            scaling_factor_2 = 1.5
+
+        // the distance depends on the curve radius of the link
+        var d = scaling_factor_2 * l.curve_radius
+
+        // and we normalize it so it is independent of the path length
+        d *= scaling_factor_1 / Math.hypot(dx, dy)
+
+        // now compute coordinates of control point
+        var q1 = x1 + dx / 2 + d * dy
+        var q2 = y1 + dy / 2 - d * dx
+
+        var p1 = 0.5 * q1 + 0.25 * (x1 + x2)
+        var p2 = 0.5 * q2 + 0.25 * (y1 + y2)
+
+        var dl1 = q1 - x1
+        var dl2 = q2 - y1
+        var dl3 = q1 - x2
+        var dl4 = q2 - y2
+        var l1 = x1 + parseInt(l.source.properties.vs.radius) * dl1 / Math.hypot(dl1, dl2)
+        var l2 = y1 + parseInt(l.source.properties.vs.radius) * dl2 / Math.hypot(dl1, dl2)
+        var l3 = x2 + parseInt(l.target.properties.vs.radius) * dl3 / Math.hypot(dl3, dl4)
+        var l4 = y2 + parseInt(l.target.properties.vs.radius) * dl4 / Math.hypot(dl3, dl4)
+
+        // also update coordinates of edge label
+        d3.select('[link-id="' + l.id + '"]').attr('x', p1).attr('y', p2)
+
+        return 'M' + l1 + ' ' + l2 + ' Q ' + q1 + ' ' + q2 + ' ' + l3 + ' ' + l4;
+
+    });
+
+    // update node positions
+    d3.selectAll('#node').attr('transform', function(n) {
+        return 'translate(' + n.x + ',' + n.y + ')';
+    });
+
+    // update position of node labels
+    d3.selectAll('#node_label').attr('x', function(n) { return n.x; })
+    d3.selectAll('#node_label').attr('y', function(n) { return n.y; })
+
+    if (stack_view) {
+        redraw_interlayer_edges(t, false, 0, 0)
+    }
+
+});
+
+
+function drag_started(d) {
+    if (simulation_running) {
+        if (!d3.event.active) 
+            simulation.alphaTarget(0.2).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+}
+
+function dragged(d) {
+    if (simulation_running) {
+        d.fx = d3.event.x;
+        d.fy = d3.event.y;
+    }
+}
+
+function drag_ended(d) {
+    if (simulation_running) {
+        if (!d3.event.active) 
+            simulation.alphaTarget(0.2);
+        d.fx = null;
+        d.fy = null;
+    }
+}
+
+
+        // used to toggle visibility of edges and nodes
+function toggle_visibility(el) {
+    var labels = d3.selectAll('#' + el + '_label')
+    var a = d3.select('#' + el + '_visibility')
+    if (parseInt(labels.style('opacity')) === 1) {
+        labels.transition().duration(500).style('opacity', '0')
+        a.text('show ' + el + ' labels')
+    } else {
+        labels.transition().duration(500).style('opacity', '1')
+        a.text('hide ' + el + ' labels')
+    }
+}
+
+
+// starts or stops the simulation
+simulation_running = true
+function toggle_simulation() {
+    if (simulation_running) {
+        simulation.stop()
+        d3.select('#toggle_simulation').text('restart')
+    } else {
+        simulation.restart()
+        d3.select('#toggle_simulation').text('stop')
+    }
+    simulation_running = !simulation_running
+}
+
+
+function change_parameter(parameter, value) {
+    switch (parameter) {
+        case 's':
+            s = +value
+            break;
+        case 'o':
+            o = +value
+            break;
+        case 't':
+            t = +value
+            break;
+        default:
+    }
+    if (stack_view) {
+        change_view(s,o,t,500,0)
+    }
+}
+
+        d3.selectAll('#link')
+    .on("mouseover", show_edge_info)
+    .on("mouseout", hide_info)
+
+d3.selectAll('#node')
+    .on("mouseover", show_node_info)
+    .on("mouseout", hide_info)
+
+    
+// displays detailed information about a node
+function show_node_info(node) {
+    var info = d3.select(".info")
+    
+    info.append('p').html('<span class="key">ID</span>' + node.id)
+    info.append('br')
+    for (var key in node.properties) {
+        if (key !== 'vs') {
+            info.append('p').html('<span class="key">' + key + '</span>' + node.properties[key])
+        }
+    }
+}
+
+
+// displays detailed information about an edge
+function show_edge_info(link) {
+    var info = d3.select(".info")
+    
+    info.append('p').html('<span class="key">Source</span>' + link.source.id)
+    info.append('p').html('<span class="key">Target</span>' + link.target.id)
+    if (weighted == true) {
+        info.append('p').html('<span class="key">Weight</span>' + link.properties.weight)
+    }
+    info.append('p').html('<span class="key">Layer</span>' + link.layer + '</br>')
+    info.append('br')
+    for (var key in link.properties) {
+        if (key !== 'vs' && key !== 'weight') {
+            info.append('p').html('<span class="key">' + key + '</span>' + link.properties[key])
+        }
+    }
+}
+
+
+// hides the information about edges / nodes
+function hide_info() {
+    d3.select(".info").html("")
+}
+        window.addEventListener('resize', on_resize);
+
+function on_resize() {
+    update_positions()
+    if (stack_view) {
+        change_perspective(s,o,0,0)
+        change_distance(t,0,0)
+    }
+}
+
+// make sure that network is always centered
+function update_positions() {
+
+    // center the network
+    window_width = svg.node().getBoundingClientRect().width
+    window_height = svg.node().getBoundingClientRect().height
+
+    // TODO Problem: simulation has to be running in order to update position
+    simulation.force('center', d3.forceCenter(window_width / 2, window_height / 2))
+
+    // adapt size of backgrounds to the network
+    var network = d3.selectAll('#nodes')
+    var backgrounds = d3.selectAll('#layer_background') 
+
+    var margin = 50
+    var network_bbox = network.node().getBBox()
+    var background_width = 2 * (Math.max(window_width / 2 - network_bbox.x, network_bbox.x + network_bbox.width - window_width / 2) + margin)
+    var background_height = 2 * (Math.max(window_height / 2 - network_bbox.y, network_bbox.y + network_bbox.height - window_height / 2) + margin)
+
+    d3.selectAll('#description')
+        .attr('x', window_width / 2)
+        .attr('y', (window_height + background_height) / 2 + 20)
+
+    backgrounds
+        .attr('width', background_width)
+        .attr('height', background_height)
+        .attr('x', (window_width - background_width) / 2)
+        .attr('y', (window_height - background_height) / 2)
+
+    d3.selectAll('.layer_clippath')
+        .attr('width', background_width)
+        .attr('height', background_height)
+        .attr('x', (window_width - background_width) / 2)
+        .attr('y', (window_height - background_height) / 2)
+
+    redraw_interlayer_edges(t, false, 0, 0)
+
+}
+
+function redraw_interlayer_edges(t, animation, duration, delay) {
+
+    var x1 = function(n) {
+        var i = parseInt(d3.select(this).attr('layer'))
+        var translate = (-0.5 + i / (layers.length - 1)) * window_width * t
+        return n.x + translate + (s-1)*(n.x-window_width/2)
+    }
+
+    var x2 = function(n) {
+        var i = parseInt(d3.select(this).attr('layer')) + 1
+        var translate = (-0.5 + i / (layers.length - 1)) * window_width * t
+        return n.x + translate + (s-1)*(n.x-window_width/2)
+    }
+
+    var y = function(n) { return n.y + o * (n.x - window_width / 2); }
+
+    if (animation) {
+        d3.selectAll('#interlayer_edge').transition("redraw_edges").delay(delay).duration(duration).attr('x1', x1).attr('x2', x2).attr('y1', y).attr('y2', y)
+    } else {
+        d3.selectAll('#interlayer_edge').attr('x1', x1).attr('x2', x2).attr('y1', y).attr('y2', y)
+    }
+
+}
+
+        function switch_view() {
+
+    var backgrounds = d3.selectAll('#layer_background') 
+    var layers = d3.selectAll('.layer')
+
+    if (!stack_view) {
+
+        // after 0s ...
+
+        // rotate network
+        change_view(s, o, 0, 1000, 0)
+
+        // adapt size of backgrounds to network
+        update_positions()
+
+        // after 1s ...
+
+        // fade in backgrounds
+        backgrounds.transition().delay(1000).duration(1000).attr('opacity', '1')
+        d3.selectAll('#blur_background').transition().delay(1000).duration(1000).attr('opacity', '0.75')
+
+        // fly in controls
+        d3.selectAll('#perspective_slider').transition().delay(1000).duration(1000).style('transform', 'translateY(-44px)')
+
+        // translate layers (splitting them)
+        change_view(s, o, t, 1000, 1000)
+
+        // after 2s ...
+
+        // fade in labels
+        d3.selectAll('#description').transition().delay(2000).duration(500).attr('opacity', '1.0').attr('transform', 'translate(0,0)')
+
+        // fly in inter-layer edges
+        // nodes_sorted = 
+        d3.selectAll('#interlayer_edge').transition().delay(2000).duration(1000).attr('transform', 'translate(0,0)')
+
+    } else {
+        
+        // after 0s ...
+
+        // fly out controls
+        d3.selectAll('#perspective_slider').transition().duration(1000).style('transform', 'translateY(0px)')
+
+        // fade out backgrounds and labels
+        backgrounds.transition().duration(1000).attr('opacity', '0')
+        d3.selectAll('#blur_background').transition().duration(1000).attr('opacity', '0')
+        d3.selectAll('#description').transition().duration(1000).attr('opacity', '0.0').on('end', function() { d3.select(this).attr('transform', 'translate(0,60)')})
+
+        // translate layers (merge them again)
+        change_view(s, o, 0, 1000, 0)
+        d3.selectAll('#interlayer_edge').transition().delay(1000).attr('transform', 'translate(0,-' + window_height + ')')
+
+        // after 1s ...
+
+        // rotate network
+        change_view(1, 0, 0, 1000, 1000)
+
+    }
+
+    stack_view = !stack_view
+}
+
+function change_view(s, o, t, duration, delay) {
+
+    var elements_to_transform = d3.selectAll('.view_transform')
+    layers.forEach(function(layer, i) {
+        var translate = (-0.5 + i / (layers.length - 1)) * window_width * t
+        d3.selectAll('.layer' + i).transition("transformation").delay(delay).duration(duration).attr('transform', `matrix(${s}, ${o}, 0, 1, ${(1-s) * window_width / 2 + translate}, ${-o * window_width / 2})`)
+    })
+    redraw_interlayer_edges(t, true, duration, delay)
+
+}
+    </script>
+</html>
